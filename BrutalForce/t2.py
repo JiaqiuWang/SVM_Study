@@ -20,6 +20,7 @@ class SupportVectorMachine:
     # 你好，第二次修改。
     # 第三次我修改
     # 第四次修改 web
+    # 第五次修改 IDE
 
     # training
     def fit(self, data):
