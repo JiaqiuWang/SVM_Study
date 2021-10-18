@@ -15,6 +15,10 @@ class SupportVectorMachine:
             self.fig = plt.figure()
             self.ax = self.fig.add_subplot(1, 1, 1)
 
+# 修改内容
+    # 修改内容
+    # 你好，第二次修改。
+
     # training
     def fit(self, data):
         self.data = data
