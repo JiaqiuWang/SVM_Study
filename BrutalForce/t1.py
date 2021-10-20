@@ -33,32 +33,45 @@ class SupportVectorMachine:
         # 将数据集拉平装到一个list当中，方便处理
         all_data = []
         for yi in self.data:
+            print("yi:", yi)
             for featureset in self.data[yi]:
+                print("featureset:", featureset)
                 for feature in featureset:
+                    print("feature:", feature)
                     all_data.append(feature)
 
         # 找到数据集中的最大值和最小值
         self.max_feature_value = max(all_data)
         self.min_feature_value = min(all_data)
+        print("最大特征值：", self.max_feature_value)
+        print("最小特征值：", self.min_feature_value)
 
         # 定义步长
         step_size = [self.max_feature_value * 0.1, self.max_feature_value * 0.01,
                      self.max_feature_value * 0.001]
+        print("步长：", step_size)
 
         # 寻找b的准备工作
         b_range_multiple = 5
         b_multiple = 5
         latest_optimum = self.max_feature_value * 10
+        print("latest_optimum:", latest_optimum)
+
         for step in step_size:
+            print("********初始循环step:", step)
             w = np.array([latest_optimum, latest_optimum])  # [80, 80]
+            print("w-值:", w)
             optimized = False
 
             while not optimized:
                 for b in np.arange(-1 * (self.max_feature_value * b_range_multiple),
                                    self.max_feature_value * b_range_multiple,
-                                   step * b_multiple):  # arange(-1 * (8*5), 8*5, 0.08*5)
+                                   step * b_multiple):  # arange(-1 * (8*5), 8*5, 0.8*5)
+                    print("b:", b)
                     for transformation in transforms:
+                        print("transformation:", transformation)
                         w_t = w * transformation  # [80, 80] * [0, 1], [80, 80] * [0.3, 0.95]
+                        print("w_t:", w_t)
                         found_option = True
 
                         for i in self.data:
@@ -70,12 +83,12 @@ class SupportVectorMachine:
                             if not found_option:
                                 break
                         if found_option:
-                            opt_dict[np.linalg.norm(w_t)] = [w_t, b]
+                            opt_dict[np.linalg.norm(w_t)] = [w_t, b]  # norm函数：取w的膜作为key
                 if w[0] < 0:
                     optimized = True
                 else:
-                    w = w-step
-            norms = sorted([n for n in opt_dict])
+                    w = w - step
+            norms = sorted([n for n in opt_dict])  # sort函数：从小到大排序
             opt_choice = opt_dict[norms[0]]
             self.w = opt_choice[0]
             self.b = opt_choice[1]
@@ -147,41 +160,41 @@ svm.visualize()
 
 
 # 测试lambda函数
-print("测试lambda函数")
-f = lambda a, b, c, d: a * b * c * d
-print(f(1, 2, 3, 4))
-
-g = [lambda a: a * 2, lambda b: b * 3]
-print(g[0](5))  # 调用
-print(g[1](6))
-
-add = lambda x, y: x + y
-print("用法1：变量调用lambda：", add(2, 4))
-time.sleep = lambda x: None
-print("将lambda函数赋值给其他函数作为替换：", time.sleep(5))
-
-print("Python内置函数接受函数作为参数")
-print("内置函数(1)filter:", list(filter(lambda x: x % 3 == 0, [1, 2, 3])))
-print("内置函数(2)sorted:", sorted([1, 2, 3, 4, 5, 6, 7, 8, 9], key=lambda x: abs(5 - x)))
-print("内置函数(3)map:", list(map(lambda x: x+1, [1, 2, 3])))
-# print("内置函数(4)reduce:", reduce(lambda a, b: '{}, {}'.format(a, b)), [1, 2, 3, 4, 5, 6, 7, 8, 9])
-# https://zhuanlan.zhihu.com/p/58579207  lambda函数的用法
-
-
-reMatrix = lambda theta: np.array([np.sin(theta), np.cos(theta)])
-thetaStep = np.pi / 10
-print("thetaStep:", thetaStep)
-# 自从生成数组
-transforms = [np.array(reMatrix(theta)) for theta in np.arange(0, np.pi, thetaStep)]
-
-reMatrix = lambda theta: np.array([np.sin(theta), np.cos(theta)])
-for theta in np.arange(0, np.pi, thetaStep):
-    print("theta:", theta)
-    print("reMatrix(theta):", reMatrix(theta))
-    print("np.array:", np.array(reMatrix(theta)))
-print("transforms:", transforms)
-
-dataArr = [-0.2, -1.1, 0, 2.3, 4.5, 0.0]
-print("输入的数据：", dataArr)
-print("使用sign()求输入数据的符号：", np.sign(dataArr))
+# print("测试lambda函数")
+# f = lambda a, b, c, d: a * b * c * d
+# print(f(1, 2, 3, 4))
+#
+# g = [lambda a: a * 2, lambda b: b * 3]
+# print(g[0](5))  # 调用
+# print(g[1](6))
+#
+# add = lambda x, y: x + y
+# print("用法1：变量调用lambda：", add(2, 4))
+# time.sleep = lambda x: None
+# print("将lambda函数赋值给其他函数作为替换：", time.sleep(5))
+#
+# print("Python内置函数接受函数作为参数")
+# print("内置函数(1)filter:", list(filter(lambda x: x % 3 == 0, [1, 2, 3])))
+# print("内置函数(2)sorted:", sorted([1, 2, 3, 4, 5, 6, 7, 8, 9], key=lambda x: abs(5 - x)))
+# print("内置函数(3)map:", list(map(lambda x: x+1, [1, 2, 3])))
+# # print("内置函数(4)reduce:", reduce(lambda a, b: '{}, {}'.format(a, b)), [1, 2, 3, 4, 5, 6, 7, 8, 9])
+# # https://zhuanlan.zhihu.com/p/58579207  lambda函数的用法
+#
+#
+# reMatrix = lambda theta: np.array([np.sin(theta), np.cos(theta)])
+# thetaStep = np.pi / 10
+# print("thetaStep:", thetaStep)
+# # 自从生成数组
+# transforms = [np.array(reMatrix(theta)) for theta in np.arange(0, np.pi, thetaStep)]
+#
+# reMatrix = lambda theta: np.array([np.sin(theta), np.cos(theta)])
+# for theta in np.arange(0, np.pi, thetaStep):
+#     print("theta:", theta)
+#     print("reMatrix(theta):", reMatrix(theta))
+#     print("np.array:", np.array(reMatrix(theta)))
+# print("transforms:", transforms)
+#
+# dataArr = [-0.2, -1.1, 0, 2.3, 4.5, 0.0]
+# print("输入的数据：", dataArr)
+# print("使用sign()求输入数据的符号：", np.sign(dataArr))
 
