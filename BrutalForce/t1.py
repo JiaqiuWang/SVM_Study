@@ -54,11 +54,12 @@ class SupportVectorMachine:
         # 寻找b的准备工作
         b_range_multiple = 5
         b_multiple = 5
+
         latest_optimum = self.max_feature_value * 10
         print("latest_optimum:", latest_optimum)
 
         for step in step_size:
-            print("********初始循环step:", step)
+            print("********初始循环step:", step, ", 初始化w和b的值")
             w = np.array([latest_optimum, latest_optimum])  # [80, 80]
             print("w-值:", w)
             optimized = False
@@ -69,25 +70,40 @@ class SupportVectorMachine:
                                    step * b_multiple):  # arange(-1 * (8*5), 8*5, 0.8*5)
                     print("b:", b)
                     for transformation in transforms:
-                        print("transformation:", transformation)
-                        w_t = w * transformation  # [80, 80] * [0, 1], [80, 80] * [0.3, 0.95]
+                        print("transformation:", transformation, ", w:", w, ", b:", b)
+                        w_t = w * transformation  # [80, 80] * [0, 1]
                         print("w_t:", w_t)
                         found_option = True
 
                         for i in self.data:
                             for xi in self.data[i]:
                                 yi = i
-                                if not yi * (np.dot(w_t, xi) + b) >= 1:
+                                print("xi:", xi, ", yi:", yi)
+                                value = yi * (np.dot(w_t, xi) + b)
+                                print("value:", value)
+                                if not value >= 1:
                                     found_option = False
+                                    print("没找到符合约束的w_t和b值，跳出最近的for,即xi=", xi)
                                     break
                             if not found_option:
+                                print("没找到符合约束的w_t和b值，跳出for,即yi=", i)
                                 break
+
+                        # 如果找到符合约束的w_t和b值，则保存到字典数据结构中
                         if found_option:
                             opt_dict[np.linalg.norm(w_t)] = [w_t, b]  # norm函数：取w的膜作为key
+                            print("opt_dict:", opt_dict)
+
+                print("旧的w:", w)
                 if w[0] < 0:
                     optimized = True
                 else:
                     w = w - step
+                print("w-step:", w, " \n结束一次所有b从arange(-1 * (8*5), 8*5, 0.8*5)的循环，b的值")
+
+
+            print("结束while循环！！！！！")
+
             norms = sorted([n for n in opt_dict])  # sort函数：从小到大排序
             opt_choice = opt_dict[norms[0]]
             self.w = opt_choice[0]
@@ -97,6 +113,7 @@ class SupportVectorMachine:
     def predict(self, features):
         classification = np.sign(np.dot(np.array(features), self.w) + self.b)
         if classification != 0 and self.visualization:
+            # s是点的大小，size
             self.ax.scatter(features[0], features[1], s=200, marker='*', c=self.colors[classification])
         return classification
 
