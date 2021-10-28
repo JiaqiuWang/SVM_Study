@@ -39,7 +39,7 @@ def linear_kernel(x, y, b=1):
 
 def main():
     # make_blob需要解释一下
-    print("Python Main Function")
+    print("1.Python Main Function")
     # 生产测试数据，训练样本
     X_train, y = make_blobs(n_samples=1000, centers=2, n_features=2, random_state=2)
     # StandardScaler()以及fit_transfrom函数的作用需要解释一下
@@ -49,9 +49,10 @@ def main():
     y[y == 0] = -1
 
     # set model parameter and initial values
-    C = 20.0  # 正则化超参，目标函数的约束
+    C = 20.0  # 正则化超参，目标函数的约束   s.t. 0<alpha<C
     m = len(X_train_scaled)  # 训练样本的数量
-    initial_alphas = np.zeros(m)  # 模型参数
+    initial_alphas = np.zeros(m)  # 模型参数，每个样本对应一个alpha值，大多数样本的alpha值为0
+    # 只有在support hyperplane之间的为C，之外的为0.
     initial_b = 0.0  # 截距
 
     # set tolerances  容差
