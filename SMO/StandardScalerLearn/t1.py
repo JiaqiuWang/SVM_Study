@@ -1,7 +1,12 @@
 
 
+"""
+URL;https://www.javaxks.com/?p=30038#transform%E5%87%BD%E6%95%B0%E7%9A%84%E7%AE%80%E4%BB%8B
+"""
+
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.datasets import make_blobs
+
 
 
 # 标准化
