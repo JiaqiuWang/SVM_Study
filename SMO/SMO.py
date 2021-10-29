@@ -34,7 +34,10 @@ def linear_kernel(x, y, b=1):
     # returns the linear combination of arrays 'x' and 'y' with the optional
     # bias term 'b' (set to 1 by default).
     result = x @ y.T + b
-    print("x ")
+    print("x：\n", x, ", type:", type(x))
+    print("y：\n", x, ", type:", type(y))
+    print("x @ y.T:\n", x@y.T, ", type:", type(x@y.T))
+    # print("x @ y:\n", x @ y.T, ", dot():", np.dot(x, y))
     return result  # Note the @ operator for matrix multiplications
 
 
