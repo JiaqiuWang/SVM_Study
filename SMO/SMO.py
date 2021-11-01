@@ -36,7 +36,7 @@ def linear_kernel(x, y, b=1):
     result = x @ y.T + b
     print("x：\n", x, ", type:", type(x))
     print("y：\n", x, ", type:", type(y))
-    print("x @ y.T:\n", x@y.T, ", type:", type(x@y.T))
+    print("x @ y.T:\n", x@y.T, ", type:", type(x@y.T), ", shape:", (x@y.T).shape)
     # print("x @ y:\n", x @ y.T, ", dot():", np.dot(x, y))
     return result  # Note the @ operator for matrix multiplications
 
@@ -56,12 +56,52 @@ def decision_function_output(model, i):
 def decision_function(alphas, target, kernel, X_train, x_test, b):
     """判别函数2：用于多个样本
     Applies the SVM decision function to the input feature vectors in 'x_test'. """
-    result = (alphas * target)
+    # result = (alphas * target)
+    print("kernel:", kernel)
     result = kernel(X_train, x_test)
-    print("result:", result)
-    # result = (alphas * target) @ kernel(X_train, x_test) - b  # * . @ 两个Operators的区别
-
+    # print("result:", result)
+    result = (alphas * target) @ kernel(X_train, x_test) - b  # * . @ 两个Operators的区别
+    print("result:\n", result, ", shape:", result.shape)
     return result
+
+
+def examine_example():
+    pass
+
+
+def fit(model):
+    """
+    训练函数
+    :param model:
+    :return:
+    """
+    numChanged = 0  # 优化的、返回的结果，如果优化成功返回1，否则返回0。如果每次优化返回1，则是一个计数器功能。
+    examineAll = 1  # 从0号元素开始优化，如果所有的元素优化完了，则把1置为0.
+
+    # loop num record
+    # 计数器，记录优化时的循环次数
+    loopnum = 0
+    loopnum1 = 0
+    loopnum2 = 0
+
+    # 当numChanged = 0 and examineAll = 0 时，循环退出
+    while numChanged > 0 or examineAll:
+        if examineAll:
+            loopnum1 += 1  # 记录顺序，一个一个选择alpha的循环次数
+            # 从0,1,2,3,...,m顺序选择a2的，送给examine_example选择alpha1，总共m(m-1)种选法
+            for i in range(model.alphas.shape[0]):
+                examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0
+                numChanged += examine_result
+        else:  #上面if里m(m-1)执行完的后执行
+            loopnum2 += 1
+
+        if examineAll == 1:
+            examineAll = 0
+        elif numChanged == 0:
+            examineALL = 1
+
+
+    pass
 
 
 def main():
@@ -90,13 +130,56 @@ def main():
     model = SMOStruct(X=X_train_scaled, y=y, C=C, kernel=linear_kernel,
                       alpha=initial_alphas, b=initial_b, errors=np.zeros(m),
                       user_linear_optim=True)
-    print("Model created...")
+    print(" 1.1 Model created...")
     # print("errors:", model.errors, ", shape:", model.errors.shape)
     # Instantiate 差值矩阵
+    print("model.kernel:", model.kernel)
     initial_error = decision_function(alphas=model.alphas, target=model.y, kernel=model.kernel,
-                                      X_train=model.X, x_test=model.X, b=model.b) - model.b
+                                      X_train=model.X, x_test=model.X, b=model.b) - model.y
+    print("初始化误差值矩阵initial_error:\n", initial_error)
+    model.errors = initial_error
+    np.random.seed(0)
 
-    # model.errors = initial_error
+    '''
+    X_train, y = make_circles(n_samples=500, noise=0.2, factor=0.1, random_state=1)
+    X_train, y = make_moons(n_samples=500, noise=0.2, random_state=1)
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train, y)
+    y[y == 0] = -1
+    print("X_train:\n", X_train)
+    print("y:\n", y)
+
+    # set model parameters and initial values
+    C = 1.0
+    m = len(X_train_scaled)
+    initial_alphas = np.zeros(m)
+    initial_b = 0.0
+
+    # set tolerance
+    tol = 0.01  # error tolerance
+    eps = 0.01  # alpha tolerance
+
+    # instantiate model
+    model = SMOStruct(X=X_train_scaled, y=y, C=C, lambda x, y: gaussian_kernel(x, y, sigma=0.5),
+                      alpha=initial_alphas, b=initial_b, errors=np.zeros(m),
+                      user_linear_optim=False)
+
+    # initialize error cache
+    # 先把这个注释掉
+    initial_error = decision_function(model.alphas, model.y, model.kernel, model.X, model.X,
+                                      model.b) - model.y
+    initial_error = np.zeros(m)
+    print('initial error:\n', initial_error)
+    model.errors = initial_error
+    '''
+
+    print("Starting to fit...")
+    # 开始训练
+    output = fit(model)
+    # 绘制训练完，找到分割平面的图
+    # fig, ax = plt.subplots()
+    # grid, ax = plot_decision_boundary(output, ax)
+
 
     print("End!")
 

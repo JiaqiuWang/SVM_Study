@@ -31,9 +31,13 @@ print("矩阵\nv2:", v2, ", type:", type(v2))
 v1 = np.array([1, 0, 1])
 v11 = np.array([1, 1, 1])
 v2 = np.array([[1, 1, 2], [1, 1, 0]])
+v22 = np.array([[1, 2, 3], [2, 1, 2]])
 print("一维向量dot:", np.dot(v1, v11))
 print("一维向量*二维向量：", np.dot(v2, v1))
 print("@符号的计算：", v1 @ v11)
+
+print("二维向量*二维向量：", np.dot(v2, v22.transpose()))
+print("@符号的计算：", v2 @ v22.T)
 
 
 """三.对应位置相乘"""
@@ -79,3 +83,6 @@ D = C * 2
 print("单位矩阵*2：\n", D)
 E = np.bmat('C D; D C')
 print("连接bind符合矩阵：\n", E)
+
+
+print("np.random.seed(0):", np.random.seed(0))
