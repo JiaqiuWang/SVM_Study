@@ -65,8 +65,22 @@ def decision_function(alphas, target, kernel, X_train, x_test, b):
     return result
 
 
-def examine_example():
-    pass
+def get_error(model, i1):
+    return 0
+
+def examine_example(i2, model):
+    """
+    寻找alpha1
+    :param i2: 0~999，其实是下标
+    :param model: model
+    :return:
+    """
+    alpha2 = model.alphas[i2]  # 这里是old alpha2
+    y2 = model.y[i2]
+    E2 = get_error(model, y2)  # error2=w{T}*x + b - y2
+
+    return 0
+
 
 
 def fit(model):
@@ -84,24 +98,36 @@ def fit(model):
     loopnum1 = 0
     loopnum2 = 0
 
-    # 当numChanged = 0 and examineAll = 0 时，循环退出
+    # 当numChanged = 0 and examineAll = 0 时，循环退出。实际循环按顺序执行所有样本，也就是第一个if中的循环。
+    # 并且else中for循环没有可优化的alpha，目标函数收敛了：在容差之内，并且满足KTT条件
+    # 则循环退出，如果执行次数超过一定阈值时仍未收敛，也退出。
+    # 重点：确定alpha2，也就是old alpha2或alpha2下标，old alpha2和old alpha1都是启发式选择。
     while numChanged > 0 or examineAll:
+        numChanged = 0
+        if loopnum == 2000:
+            break
+        loopnum += 1
+
         if examineAll:
-            loopnum1 += 1  # 记录顺序，一个一个选择alpha的循环次数
+            loopnum1 += 1  # 记录顺序，一个一个选择alpha 的循环次数
             # 从0,1,2,3,...,m顺序选择a2的，送给examine_example选择alpha1，总共m(m-1)种选法
             for i in range(model.alphas.shape[0]):
                 examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0
                 numChanged += examine_result
-        else:  #上面if里m(m-1)执行完的后执行
+        else:  # 上面if里m(m-1)执行完的后执行
             loopnum2 += 1
+            # loop over examples where alphas are not already at their limits
+            for i in np.where((model.alphas != 0) & (model.alphas != model.C))[0]:
+                examine_result, model = examine_example(i, model)
+                numChanged += examine_result
 
         if examineAll == 1:
             examineAll = 0
         elif numChanged == 0:
             examineALL = 1
 
-
-    pass
+    print("loopNum:{0}, loopNum1:{1}, loopNum2:{2}".format(loopnum1, loopnum1, loopnum2))
+    return model
 
 
 def main():
@@ -175,7 +201,7 @@ def main():
 
     print("Starting to fit...")
     # 开始训练
-    output = fit(model)
+    output_model = fit(model)
     # 绘制训练完，找到分割平面的图
     # fig, ax = plt.subplots()
     # grid, ax = plot_decision_boundary(output, ax)

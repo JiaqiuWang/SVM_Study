@@ -86,3 +86,7 @@ print("连接bind符合矩阵：\n", E)
 
 
 print("np.random.seed(0):", np.random.seed(0))
+
+ar_a = np.array([3, 6, 9])
+for i in ar_a:
+    print(i)
