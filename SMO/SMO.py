@@ -65,8 +65,19 @@ def decision_function(alphas, target, kernel, X_train, x_test, b):
     return result
 
 
-def get_error(model, i1):
-    return 0
+def get_error(model, sub):
+    """
+    按角标获取样本误差
+    :param sub:
+    :param model:
+    :return:
+    """
+    if 0 < model.alphas[sub] < model.C:  # 在此区间的alpha属支持向量，落在超平面上，是要找的alphas值，
+        # 直接从计算完放到误差矩阵中的值即可
+        return model.errors[sub]
+    else:  # alpha=0或C, =0时，样本点在超平面外表示该样本分类正确，=C时样本点在超平面间表示分类错误。
+        return decision_function_output(model, sub) - model.y[sub]
+
 
 def examine_example(i2, model):
     """
@@ -77,7 +88,7 @@ def examine_example(i2, model):
     """
     alpha2 = model.alphas[i2]  # 这里是old alpha2
     y2 = model.y[i2]
-    E2 = get_error(model, y2)  # error2=w{T}*x + b - y2
+    E2 = get_error(model, i2)  # error2=w{T}*x + b - y2
 
     return 0
 
