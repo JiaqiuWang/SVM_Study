@@ -30,6 +30,7 @@ print("ex3:\n", ex3)
 a = np.array([2, 4, 6, 8, 10])
 ex1 = np.where(a > 5)
 print("ex1:返回的是索引，不是元素", ex1)
+print('np.where()[0]:', ex1[0])
 ex2 = a[np.where(a > 5)]
 ex3 = a[a > 5]
 print("ex2:{0} and ex3:{1}".format(ex2, ex3))
