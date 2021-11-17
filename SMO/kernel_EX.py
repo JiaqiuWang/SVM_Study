@@ -76,3 +76,5 @@ x1 = np.array([-0.48763336, -1.19492087])
 x2 = np.array([0.41318279,  0.61920597])
 print("x1,x2高斯", gausssion_kernel(x1, x2))
 print("x1,x3高斯", gausssion_kernel(x1, x3))
+
+print(1e-8.__round__())

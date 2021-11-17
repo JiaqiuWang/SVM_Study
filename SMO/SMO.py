@@ -140,8 +140,82 @@ def take_step(i1, i2, model):
     k11 = model.kernel(model.X[i1], model.X[i1])
     k12 = model.kernel(model.X[i1], model.X[i2])
     k22 = model.kernel(model.X[i2], model.X[i2])
+    # 计算eta, equation J15: eta = K(x1, x1) + K(x2, x2) - 2K(x1, x2)
+    eta = k11 + k22 - 2 * k12
+    # 如论文中所述，eta分两种情况：eta值为正positive，还是负数或0来计算alpha2 new
+    # 第一种情况：eta值大于0
+    if eta > 0:
+        # equation J16 计算alpha2 new
+        a2 = alpha2 + y2 * (E1 - E2) / eta
+        # clip a2 based on bounds L & H，把a2夹到限定区间 equation J17
+        if L < a2 < H:
+            a2 = a2
+        elif a2 <= L:
+            a2 = L
+        elif a2 >= H:
+            a2 = H
+    else:  # 如果eta值为负数或0，即<=0时，move new a2 to bound with greater objective function value
+        # Equation J19，在特殊情况下，eta可能不为正not positive
+        f1 = y1 * (E1 + model.b) - alpha1 * k11 - s * alpha2 * k12
+        f2 = y2 * (E2 + model.b) - s * alpha1 * k12 - alpha2 * k22
+        L1 = alpha1 + s * (alpha2 - L)
+        H1 = alpha2 + s * (alpha2 - H)
+        Lobj = L1 * f1 + L * f2 + 0.5 * L1**2 * k11 + 0.5 * L**2 * k22 + s * L * L1 * k12
+        Hobj = H1 * f1 + H * f2 + 0.5 * H1**2 * k11 + 0.5 * H**2 * k22 + s * H * H1 * k12
+        if Lobj < Hobj - model.eps:
+            a2 = L
+        elif Lobj > Hobj + model.eps:
+            a2 = H
+        else:
+            a2 = alpha2
 
-    return
+    # 当new a2 (alpha2) 千万分之一接近C或0时，就让他等于C或0
+    if a2 < 1e-8:
+        a2 = 0.0
+    elif a2 > (model.C - 1e-8):
+        a2 = model.C
+    # 超过容差仍不能优化时，跳过
+    # if examples can't be optimized within epsilon(eps), skip this pair
+    if (np.abs(a2 - alpha2)) < (model.eps * (a2 + alpha2 + model.eps)):
+        return 0, model
+
+    # 根据a2 new计算a1 new, Equation J18: a1_new = a1_old + y1*y2*(a2_old - a2_new)
+    # a1 = alpha1 + y1 * y2 * (alpha2 - a2)
+    a1 = alpha1 + s * (alpha2 - a2)
+
+    # 更新 bias b(截距b)的值Equation J20: b1_new=E1+y1*k11(a1_new-a1_old)+y2*k21(a2_new-a2_old)+b_old
+    b1 = E1 + y1 * k11 * (a1 - alpha1) + y2 * k12 * (a2 - alpha2) + model.b
+    # Equation J21: b2_new=E2+y1(a1_new-a1_old)k12+y2(a2_new-a2_old)k22+b
+    b2 = E2 + y1 * (a1 - alpha1) * k12 + y2 * (a2 - alpha2) * k22 + model.b
+    # Set new threshold based on if a1 or a2 is bound by L and/or H
+    if 0 < a1 < model.C:
+        b_new = b1
+    elif 0 < a2 < model.C:
+        b_new = b2
+    else:  # Average thresholds if both are bound
+        b_new = (b1 + b2) * 0.5
+    # 原本在这里在更新模型中的b值，又由于更新误差的时候要计算新旧b值差，所以放到后面再更新
+
+    # 当所训练模型为线性核函数时，根据Equation J22计算w的值w_new=w_old+y1(a1_new-a1_old)x1+y2(a2_new-a2_old)x2
+    if model.user_linear_optim:
+        model.w = model.w + y1 * (a1 - alpha1) * model.X[i1] + y2 * (a2 - alpha2) * model.X[i2]
+    # 在alphas矩阵中分别更新a1, a2的值
+    # Update model object with new alphas & threshold
+    model.alphas[i1] = a1
+    model.alphas[i2] = a2
+
+    # 优化完了，更新差值矩阵的对应值。同时更新差值矩阵其他值
+    model.errors[i1] = 0
+    model.errors[i2] = 0
+    # 更新差值 Equation 12 Ei_new=所有支持向量集合中每个样本j的误差=y_j*alpha_j*k_ij+b_new-y_i
+    for k in range(model.m):  # 循环所有样本的数量
+        if 0 < model.alphas[k] < model.C:
+            model.errors[k] += y1 * (a1 - alpha1) * model.kernel(model.X[i1], model.X[k]) + \
+                               y2 * (a2 - alpha2) * model.kernel(model.X[i2], model.X[k]) + \
+                               model.b - b_new
+    # update model threshold，计算完model.b - b_new的值，在更新模型中的b值。
+    model.b = b_new
+    return 1, model
 
 
 def examine_example(i2, model):
@@ -180,9 +254,9 @@ def examine_example(i2, model):
         if step_result:
             return 1, model
 
-
     # 由于初始alphas矩阵为0矩阵，第一次执行此处：当alpha2确定的时候，如何选择alpha1，循环所有的(m-1)alpha，随机选择起始点
     for i1 in np.roll(np.arange(model.m), np.random.choice(np.arange(model.m))):
+        print("i1:{0}, i2:{1}".format(i1, i2))
         # i1是alpha1的下标
         step_result, model = take_step(i1, i2, model)  # (3, 0, model)
         if step_result:
