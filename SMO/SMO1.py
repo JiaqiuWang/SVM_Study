@@ -2,7 +2,6 @@
 描述：支持向量机之SMO算法
 作者：王佳秋
 日期：2021年10月19日
-45:51
 """
 
 import numpy as np
@@ -418,10 +417,11 @@ def main():
 
     print("Starting to fit...")
     # 开始训练
-    output_model = fit(model)
+    output = fit(model)
     # 绘制训练完，找到分割平面的图
-    # fig, ax = plt.subplots()
-    # grid, ax = plot_decision_boundary(output, ax)
+    fig, ax = plt.subplots()
+    grid, ax = plot_decision_boundary(output, ax)
+    plt.show()
     print("End!")
 
 
