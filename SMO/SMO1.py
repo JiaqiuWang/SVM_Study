@@ -110,9 +110,9 @@ def decision_function_output(model, i):
 def decision_function(alphas, target, kernel, X_train, x_test, b):
     """判别函数2：用于多个样本，主要用于绘图
     Applies the SVM decision function to the input feature vectors in 'x_test'. """
-    # result = (alphas * target)
+    result = (alphas * target)
     print("kernel:", kernel)
-    result = kernel(X_train, x_test)
+    # result = kernel(X_train, x_test)
     # print("result:", result)
     result = (alphas * target) @ kernel(X_train, x_test) - b  # * . @ 两个Operators的区别
     print("result:\n", result, ", shape:", result.shape)
@@ -319,14 +319,15 @@ def fit(model):
     # 重点：确定alpha2，也就是old alpha2或alpha2下标，old alpha2和old alpha1都是启发式选择。
     while numChanged > 0 or examineAll:
         numChanged = 0
-        if loopnum == 2000:
+        if loopnum > 2000:
             break
         loopnum += 1
 
         if examineAll:
             loopnum1 += 1  # 记录顺序，一个一个选择alpha 的循环次数
             # 从0,1,2,3,...,m顺序选择a2的，送给examine_example选择alpha1，总共m(m-1)种选法
-            for i in range(model.alphas.shape[0]):
+            for i in range(model.alphas.shape[0]):  # i 从0循环到999
+                print("i:", i)
                 examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0
                 numChanged += examine_result
         else:  # 上面if里m(m-1)执行完的后执行
@@ -360,69 +361,35 @@ def main():
     C = 20.0  # 正则化超参，目标函数的约束   s.t. 0<=alpha<=C
     m = len(X_train_scaled)  # 训练样本的数量
     initial_alphas = np.zeros(m)  # 模型参数，每个样本对应一个alpha值，大多数样本的alpha值为0
-    print("alphas.shape():", initial_alphas.shape)
     # 只有在support hyperplane之间的为C，之外的为0，在线之上为0<=alpha<=C
     initial_b = 0.0  # 截距
 
     # set tolerances  容差
     tol = 0.01  # error tolerance 差值EI的容差。输出误差值=f(xi)-yi的值
     eps = 0.01  # alpha tolerance 参数alpha误差值=alpha_new - alpha_old
+    print(" 1.1 Set model parameters and initial values...")
 
     # Instantiate model
     model = SMOStruct(X=X_train_scaled, y=y, C=C, kernel=linear_kernel,
                       alpha=initial_alphas, b=initial_b, errors=np.zeros(m),
                       user_linear_optim=True, tol=tol, eps=eps)
-    print(" 1.1 Model created...")
-    # print("errors:", model.errors, ", shape:", model.errors.shape)
+    print(" 1.2 Model created. ", model)
     # Instantiate 差值矩阵
-    print("model.kernel:", model.kernel)
     initial_error = decision_function(alphas=model.alphas, target=model.y, kernel=model.kernel,
                                       X_train=model.X, x_test=model.X, b=model.b) - model.y
-    print("初始化误差值矩阵initial_error:\n", initial_error)
     model.errors = initial_error
+    print(" 1.3 Set model parameters and initial values...")
+    # print("Initial model.errors:\n", model.errors)
     np.random.seed(0)
-
-    '''
-    X_train, y = make_circles(n_samples=500, noise=0.2, factor=0.1, random_state=1)
-    X_train, y = make_moons(n_samples=500, noise=0.2, random_state=1)
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train, y)
-    y[y == 0] = -1
-    print("X_train:\n", X_train)
-    print("y:\n", y)
-
-    # set model parameters and initial values
-    C = 1.0
-    m = len(X_train_scaled)
-    initial_alphas = np.zeros(m)
-    initial_b = 0.0
-
-    # set tolerance
-    tol = 0.01  # error tolerance
-    eps = 0.01  # alpha tolerance
-
-    # instantiate model
-    model = SMOStruct(X=X_train_scaled, y=y, C=C, lambda x, y: gaussian_kernel(x, y, sigma=0.5),
-                      alpha=initial_alphas, b=initial_b, errors=np.zeros(m),
-                      user_linear_optim=False)
-
-    # initialize error cache
-    # 先把这个注释掉
-    initial_error = decision_function(model.alphas, model.y, model.kernel, model.X, model.X,
-                                      model.b) - model.y
-    initial_error = np.zeros(m)
-    print('initial error:\n', initial_error)
-    model.errors = initial_error
-    '''
 
     print("Starting to fit...")
     # 开始训练
     output = fit(model)
-    # 绘制训练完，找到分割平面的图
-    fig, ax = plt.subplots()
-    grid, ax = plot_decision_boundary(output, ax)
-    plt.show()
-    print("End!")
+    # # 绘制训练完，找到分割平面的图
+    # fig, ax = plt.subplots()
+    # grid, ax = plot_decision_boundary(output, ax)
+    # plt.show()
+    # print("End!")
 
 
 if __name__ == "__main__":
