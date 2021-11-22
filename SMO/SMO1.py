@@ -115,7 +115,7 @@ def decision_function(alphas, target, kernel, X_train, x_test, b):
     # result = kernel(X_train, x_test)
     # print("result:", result)
     result = (alphas * target) @ kernel(X_train, x_test) - b  # * . @ 两个Operators的区别
-    print("result:\n", result, ", shape:", result.shape)
+    # print("result:\n", result, ", shape:", result.shape)
     return result
 
 
@@ -266,7 +266,9 @@ def examine_example(i2, model):
     # 下面条件之一满足，进入if开始找第二个alpha，送到take_step进行优化
     # 如果满足第一个if语句说明不满足KTT约束条件，需要优化样本
     # 条件意思：在容差之内或alpha2需要优化的话，就开始优化。不需要优化满足KTT条件退出优化。
+    print("i:", i2, ', alpha2:', alpha2, ', y2:', y2, ", E2:", E2)
     if (r2 < -model.tol and alpha2 < model.C) or (r2 > model.tol and alpha2 > 0):  # 违反KTT条件
+        print('该i2:{}违反KTT条件，需要被优化'.format(i2))
         if len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]) > 1:
             # 先找那些不在0，C的点。选择Ei矩阵中差值做大的先进行优化
             # 要想|E2-E1|最大，只需在E2为正，选择最小的Ei作为E1
@@ -327,7 +329,7 @@ def fit(model):
             loopnum1 += 1  # 记录顺序，一个一个选择alpha 的循环次数
             # 从0,1,2,3,...,m顺序选择a2的，送给examine_example选择alpha1，总共m(m-1)种选法
             for i in range(model.alphas.shape[0]):  # i 从0循环到999
-                print("i:", i)
+                # print("i:", i)
                 examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0
                 numChanged += examine_result
         else:  # 上面if里m(m-1)执行完的后执行
@@ -348,32 +350,37 @@ def fit(model):
 
 def main():
     # make_blob需要解释一下
-    print("1.Python Main Function")
-    # 生产测试数据，训练样本
+    print("1 Python Main Function")
+    print(" 1.1生产训练样本X[x1, x2, ...xn]; Y=[y1, y2, ..., yn], yi=+-1")
+    # 1.1生产训练样本X[x1, x2, ...xn]; Y=[y1, y2, ..., yn], yi=+-1"
     X_train, y = make_blobs(n_samples=1000, centers=2, n_features=2, random_state=2)
-    # StandardScaler()以及fit_transfrom函数的作用需要解释一下
-    scaler = StandardScaler()  # 数据预处理，使得经过处理的数据符合正态分布，即均值为0，标准差为1
+    print(" 1.2数据预处理：数据预处理，使得经过处理的数据X符合正态分布，即均值为0，标准差为1，Y为-1或1")
+    # 1.2数据预处理：数据预处理，使得经过处理的数据X符合正态分布，即均值为0，标准差为1，Y为-1或1
+    scaler = StandardScaler()  # StandardScaler()以及fit_transform()函数的作用需要解释一下
     # 训练样本异常大或异常小会影响样本的正确训练，如果数据的分部很分散也会影响
     X_train_scaled = scaler.fit_transform(X_train, y)
     y[y == 0] = -1
 
-    # set model parameter and initial values
+    # 2.设置模型参数与对应的初始值：set model parameter and initial values
+    print('2 设置模型参数与对应的初始值')
     C = 20.0  # 正则化超参，目标函数的约束   s.t. 0<=alpha<=C
     m = len(X_train_scaled)  # 训练样本的数量
     initial_alphas = np.zeros(m)  # 模型参数，每个样本对应一个alpha值，大多数样本的alpha值为0
-    # 只有在support hyperplane之间的为C，之外的为0，在线之上为0<=alpha<=C
+    # print("initial_alphas:", initial_alphas, ", shape:", initial_alphas.shape, ", type:", type(initial_alphas))
+    # 只有在support hyperplane之间的为C，之外的为0，在线之上为0<alpha<C
     initial_b = 0.0  # 截距
 
     # set tolerances  容差
     tol = 0.01  # error tolerance 差值EI的容差。输出误差值=f(xi)-yi的值
     eps = 0.01  # alpha tolerance 参数alpha误差值=alpha_new - alpha_old
-    print(" 1.1 Set model parameters and initial values...")
+    # print(" 1.1 Set model parameters and initial values...")
 
     # Instantiate model
+    print('3 实例化数据模型与参数初始值。')
     model = SMOStruct(X=X_train_scaled, y=y, C=C, kernel=linear_kernel,
                       alpha=initial_alphas, b=initial_b, errors=np.zeros(m),
                       user_linear_optim=True, tol=tol, eps=eps)
-    print(" 1.2 Model created. ", model)
+    print("4 计算所有样本的误差值=决策函数-真实值. ", model)
     # Instantiate 差值矩阵
     initial_error = decision_function(alphas=model.alphas, target=model.y, kernel=model.kernel,
                                       X_train=model.X, x_test=model.X, b=model.b) - model.y
@@ -382,7 +389,7 @@ def main():
     # print("Initial model.errors:\n", model.errors)
     np.random.seed(0)
 
-    print("Starting to fit...")
+    print("5 开始训练... / Starting to fit...")
     # 开始训练
     output = fit(model)
     # # 绘制训练完，找到分割平面的图

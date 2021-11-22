@@ -325,7 +325,7 @@ def fit(model):
         loopnum += 1
 
         if examineAll:
-            loopnum1 += 1  # 记录顺序，一个一个选择alpha 的循环次数
+            loopnum1 += 1  # 记录顺序，一个一个选择alpha2的循环次数
             # 从0,1,2,3,...,m顺序选择a2的，送给examine_example选择alpha1，总共m(m-1)种选法
             for i in range(model.alphas.shape[0]):
                 examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0

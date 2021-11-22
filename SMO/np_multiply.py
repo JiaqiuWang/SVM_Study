@@ -1,5 +1,5 @@
 """
-描述：numpy中线性代数详解
+描述：numpy中线性代数详解SMO算法中的函数值的矩阵乘法
 作者：王佳秋
 日期：2021年11月19日
 URL:https://wizardforcel.gitbooks.io/pyda-2e/content/4.html
