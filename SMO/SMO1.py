@@ -130,6 +130,7 @@ def get_error(model, sub):
         # 直接从计算完放到误差矩阵中的值即可
         return model.errors[sub]
     else:  # alpha=0或C, =0时，样本点在超平面外表示该样本分类正确，=C时样本点在超平面间表示分类错误。
+        print("f({0})函数值{1}".format(sub, decision_function_output(model, sub)))
         return decision_function_output(model, sub) - model.y[sub]
 
 
@@ -146,6 +147,7 @@ def take_step(i1, i2, model):
     if i1 == i2:
         return 0, model
     # 如果i1 != i2的情况下，
+    print('Take_step步骤...')
     alpha1 = model.alphas[i1]  # old_alpha1
     alpha2 = model.alphas[i2]  # old_alpha2
     y1 = model.y[i1]  # old_y1
@@ -155,6 +157,7 @@ def take_step(i1, i2, model):
     s = y1 * y2
     # 计算alpha的边界，L, H
     # Computing L & H, the bounds on new possible alpha values
+    L = H = None
     if y1 != y2:
         # y1, y2异号，使用Equation(J13)
         L = max(0, alpha2 - alpha1)
@@ -165,6 +168,7 @@ def take_step(i1, i2, model):
         H = min(model.C, alpha1 + alpha2)
     if L == H:
         return 0, model
+    print("L:{0}, H:{1}".format(L, H))
 
     # 根据公式J16计算et, et=2k12-k11-k22, 分别计算样本1,2的核函数组合，目的在于计算eta
     # 也就是求一姐导数后的值，目的在于求alpha2 new
@@ -173,19 +177,22 @@ def take_step(i1, i2, model):
     k22 = model.kernel(model.X[i2], model.X[i2])
     # 计算eta, equation J15: eta = K(x1, x1) + K(x2, x2) - 2K(x1, x2)
     eta = k11 + k22 - 2 * k12
+    print("eta:", eta)
 
     # 如论文中所述，eta分两种情况：eta值为正positive，还是负数或0来计算alpha2 new
     # 第一种情况：eta值大于0
     if eta > 0:
         # equation J16 计算alpha2 new
-        a2 = alpha2 + y2 * (E1 - E2) / eta
+        a2 = None
+        a2_new = alpha2 + y2 * (E1 - E2) / eta
         # clip a2 based on bounds L & H，把a2夹到限定区间 equation J17
-        if L < a2 < H:
-            a2 = a2
-        elif a2 <= L:
+        if L < a2_new < H:
+            a2 = a2_new
+        elif a2_new <= L:
             a2 = L
-        elif a2 >= H:
+        elif a2_new >= H:
             a2 = H
+        print('old alpha2:', alpha2, ', new alpha2:', a2_new, ', 夹new alpha2到L,H限定区间：', a2)
     else:  # 如果eta值为负数或0，即<=0时，move new a2 to bound with greater objective function value
         # Equation J19，在特殊情况下，eta可能不为正not positive
         f1 = y1 * (E1 + model.b) - alpha1 * k11 - s * alpha2 * k12
@@ -200,6 +207,7 @@ def take_step(i1, i2, model):
             a2 = H
         else:
             a2 = alpha2
+        print('old alpha2:', alpha2, ', new alpha2:', a2)
 
     # 当new a2 (alpha2) 千万分之一接近C或0时，就让他等于C或0
     if a2 < 1e-8:
@@ -214,11 +222,13 @@ def take_step(i1, i2, model):
     # 根据a2 new计算a1 new, Equation J18: a1_new = a1_old + y1*y2*(a2_old - a2_new)
     # a1 = alpha1 + y1 * y2 * (alpha2 - a2)
     a1 = alpha1 + s * (alpha2 - a2)
+    print('old alpha1:{0}, new alpha 1:{1}'.format(alpha1, a1))
 
     # 更新 bias b(截距b)的值Equation J20: b1_new=E1+y1*k11(a1_new-a1_old)+y2*k21(a2_new-a2_old)+b_old
     b1 = E1 + y1 * k11 * (a1 - alpha1) + y2 * k12 * (a2 - alpha2) + model.b
     # Equation J21: b2_new=E2+y1(a1_new-a1_old)k12+y2(a2_new-a2_old)k22+b
     b2 = E2 + y1 * (a1 - alpha1) * k12 + y2 * (a2 - alpha2) * k22 + model.b
+    print('b1:', b1, ', b2:', b2)
     # Set new threshold based on if a1 or a2 is bound by L and/or H
     if 0 < a1 < model.C:
         b_new = b1
@@ -226,6 +236,7 @@ def take_step(i1, i2, model):
         b_new = b2
     else:  # Average thresholds if both are bound
         b_new = (b1 + b2) * 0.5
+    print('b_new:', b_new)
     # 原本在这里在更新模型中的b值，又由于更新误差的时候要计算新旧b值差，所以放到后面再更新
 
     # 当所训练模型为线性核函数时，根据Equation J22计算w的值w_new=w_old+y1(a1_new-a1_old)x1+y2(a2_new-a2_old)x2
@@ -269,32 +280,36 @@ def examine_example(i2, model):
     print("i:", i2, ', alpha2:', alpha2, ', y2:', y2, ", E2:", E2)
     if (r2 < -model.tol and alpha2 < model.C) or (r2 > model.tol and alpha2 > 0):  # 违反KTT条件
         print('该i2:{}违反KTT条件，需要被优化'.format(i2))
+        # 由于第一次的alpha矩阵都为0，所以没有不为0与C的alpha值，第一个if优化不被执行
         if len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]) > 1:
             # 先找那些不在0，C的点。选择Ei矩阵中差值做大的先进行优化
             # 要想|E2-E1|最大，只需在E2为正，选择最小的Ei作为E1
             # 在E2为负数时，选择最大的Ei作为E1
+            i1 = None
             if model.errors[i2] > 0:
                 i1 = np.argmin(model.errors)  # 注：回沿轴的最小值的索引，而不是具体数值
             elif model.errors[i2] <= 0:
                 i1 = np.argmax(model.errors)
+
+            if i1:
+                step_result, model = take_step(i1, i2, model)
+                if step_result:
+                    return 1, model
+
+        # 循环所有非0、非C的alpha值进行优化，随机选择起点
+        for i1 in np.roll(np.where((model.alphas != 0) & (model.alphas != model.C))[0],
+                          np.random.choice(np.arange(model.m))):
             step_result, model = take_step(i1, i2, model)
             if step_result:
                 return 1, model
 
-    # 循环所有非0、非C的alpha值进行优化，随机选择起点
-    for i1 in np.roll(np.where((model.alphas != 0) & (model.alphas != model.C))[0],
-                      np.random.choice(np.arange(model.m))):
-        step_result, model = take_step(i1, i2, model)
-        if step_result:
-            return 1, model
-
-    # 由于初始alphas矩阵为0矩阵，第一次执行此处：当alpha2确定的时候，如何选择alpha1，循环所有的(m-1)alpha，随机选择起始点
-    for i1 in np.roll(np.arange(model.m), np.random.choice(np.arange(model.m))):
-        print("i1:{0}, i2:{1}".format(i1, i2))
-        # i1是alpha1的下标
-        step_result, model = take_step(i1, i2, model)  # (3, 0, model)
-        if step_result:
-            return 1, model
+        # 由于初始alphas矩阵为0矩阵，第一次执行此处：当alpha2确定的时候，如何选择alpha1，循环所有的(m-1)alpha，随机选择起始点
+        for i1 in np.roll(np.arange(model.m), np.random.choice(np.arange(model.m))):
+            print("i1:{0}, i2:{1}".format(i1, i2))
+            # i1是alpha1的下标
+            step_result, model = take_step(i1, i2, model)  # (3, 0, model)
+            if step_result:
+                return 1, model
 
     # 先看上面的if语句，如果if条件不满足，说明KKT条件已满足，找其它样本进行优化，否则执行下面语句，退出
     return 0, model
