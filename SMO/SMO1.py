@@ -111,7 +111,7 @@ def decision_function(alphas, target, kernel, X_train, x_test, b):
     """判别函数2：用于多个样本，主要用于绘图
     Applies the SVM decision function to the input feature vectors in 'x_test'. """
     result = (alphas * target)
-    print("kernel:", kernel)
+    print("多样本决策函数中的kernel:", kernel)
     # result = kernel(X_train, x_test)
     # print("result:", result)
     result = (alphas * target) @ kernel(X_train, x_test) - b  # * . @ 两个Operators的区别
@@ -217,12 +217,13 @@ def take_step(i1, i2, model):
     # 超过容差仍不能优化时，跳过
     # if examples can't be optimized within epsilon(eps), skip this pair
     if (np.abs(a2 - alpha2)) < (model.eps * (a2 + alpha2 + model.eps)):
+        print("Within epsilon, skip this pair.")
         return 0, model
 
     # 根据a2 new计算a1 new, Equation J18: a1_new = a1_old + y1*y2*(a2_old - a2_new)
     # a1 = alpha1 + y1 * y2 * (alpha2 - a2)
     a1 = alpha1 + s * (alpha2 - a2)
-    print('old alpha1:{0}, new alpha 1:{1}'.format(alpha1, a1))
+    print('old alpha1:{0}, new alpha1:{1}'.format(alpha1, a1))
 
     # 更新 bias b(截距b)的值Equation J20: b1_new=E1+y1*k11(a1_new-a1_old)+y2*k21(a2_new-a2_old)+b_old
     b1 = E1 + y1 * k11 * (a1 - alpha1) + y2 * k12 * (a2 - alpha2) + model.b
@@ -258,6 +259,7 @@ def take_step(i1, i2, model):
                                model.b - b_new
     # update model threshold，计算完model.b - b_new的值，在更新模型中的b值。
     model.b = b_new
+    print("更新完线性w值、alpha矩阵后返回new model.\n")
     return 1, model
 
 
@@ -277,11 +279,12 @@ def examine_example(i2, model):
     # 下面条件之一满足，进入if开始找第二个alpha，送到take_step进行优化
     # 如果满足第一个if语句说明不满足KTT约束条件，需要优化样本
     # 条件意思：在容差之内或alpha2需要优化的话，就开始优化。不需要优化满足KTT条件退出优化。
-    print("i:", i2, ', alpha2:', alpha2, ', y2:', y2, ", E2:", E2)
+    print("alpha2的下标i2:", i2, ', alpha2:', alpha2, ', y2:', y2, ", E2:", E2)
     if (r2 < -model.tol and alpha2 < model.C) or (r2 > model.tol and alpha2 > 0):  # 违反KTT条件
         print('该i2:{}违反KTT条件，需要被优化'.format(i2))
         # 由于第一次的alpha矩阵都为0，所以没有不为0与C的alpha值，第一个if优化不被执行
         if len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]) > 1:
+            print("不为0与C的alpha个数为：", len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]))
             # 先找那些不在0，C的点。选择Ei矩阵中差值做大的先进行优化
             # 要想|E2-E1|最大，只需在E2为正，选择最小的Ei作为E1
             # 在E2为负数时，选择最大的Ei作为E1
@@ -292,6 +295,7 @@ def examine_example(i2, model):
                 i1 = np.argmax(model.errors)
 
             if i1:
+                print("i1:", i1, ", i2:", i2)
                 step_result, model = take_step(i1, i2, model)
                 if step_result:
                     return 1, model
@@ -400,7 +404,7 @@ def main():
     initial_error = decision_function(alphas=model.alphas, target=model.y, kernel=model.kernel,
                                       X_train=model.X, x_test=model.X, b=model.b) - model.y
     model.errors = initial_error
-    print(" 1.3 Set model parameters and initial values...")
+    # print(" 1.3 Set model parameters and initial values...")
     # print("Initial model.errors:\n", model.errors)
     np.random.seed(0)
 
