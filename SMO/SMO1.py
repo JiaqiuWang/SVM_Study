@@ -3,6 +3,7 @@
 作者：王佳秋
 日期：2021年10月19日
 """
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -130,7 +131,7 @@ def get_error(model, sub):
         # 直接从计算完放到误差矩阵中的值即可
         return model.errors[sub]
     else:  # alpha=0或C, =0时，样本点在超平面外表示该样本分类正确，=C时样本点在超平面间表示分类错误。
-        print("f({0})函数值{1}".format(sub, decision_function_output(model, sub)))
+        print("f(alpha{0})预测函数值{1}".format(sub, decision_function_output(model, sub)))
         return decision_function_output(model, sub) - model.y[sub]
 
 
@@ -271,7 +272,7 @@ def examine_example(i2, model):
     :return:
     """
     alpha2 = model.alphas[i2]  # 这里是old alpha2
-    y2 = model.y[i2]
+    y2 = model.y[i2]  # old alpha2
     E2 = get_error(model, i2)  # error2=w{T}*x + b - y2
     r2 = E2 * y2
 
@@ -284,35 +285,45 @@ def examine_example(i2, model):
         print('该i2:{}违反KTT条件，需要被优化'.format(i2))
         # 由于第一次的alpha矩阵都为0，所以没有不为0与C的alpha值，第一个if优化不被执行
         if len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]) > 1:
-            print("不为0与C的alpha个数为：", len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]))
+            print("不为0与C的alpha个数为：", len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]),
+                  ", 不为0与C的alpha数组下标：", np.where(model.alphas[(model.alphas != 0) & (model.alphas != model.C)])[0])
             # 先找那些不在0，C的点。选择Ei矩阵中差值做大的先进行优化
             # 要想|E2-E1|最大，只需在E2为正，选择最小的Ei作为E1
             # 在E2为负数时，选择最大的Ei作为E1
             i1 = None
             if model.errors[i2] > 0:
+                # print("model.errors:", model.errors)
                 i1 = np.argmin(model.errors)  # 注：回沿轴的最小值的索引，而不是具体数值
             elif model.errors[i2] <= 0:
                 i1 = np.argmax(model.errors)
 
             if i1:
-                print("i1:", i1, ", i2:", i2)
+                print("A-i1:", i1, ", i2:", i2)
                 step_result, model = take_step(i1, i2, model)
                 if step_result:
+                    print("step_result为真！")
                     return 1, model
+            else:
+                print('i1为空！')
 
         # 循环所有非0、非C的alpha值进行优化，随机选择起点
         for i1 in np.roll(np.where((model.alphas != 0) & (model.alphas != model.C))[0],
                           np.random.choice(np.arange(model.m))):
+            print(np.roll(np.where((model.alphas != 0) & (model.alphas != model.C))[0],
+                          np.random.choice(np.arange(model.m))))
+            print("B-i1:{0}, i2:{1}".format(i1, i2))
             step_result, model = take_step(i1, i2, model)
             if step_result:
+                print("step_result为真！")
                 return 1, model
 
         # 由于初始alphas矩阵为0矩阵，第一次执行此处：当alpha2确定的时候，如何选择alpha1，循环所有的(m-1)alpha，随机选择起始点
         for i1 in np.roll(np.arange(model.m), np.random.choice(np.arange(model.m))):
-            print("i1:{0}, i2:{1}".format(i1, i2))
+            print("C-i1:{0}, i2:{1}".format(i1, i2))
             # i1是alpha1的下标
             step_result, model = take_step(i1, i2, model)  # (3, 0, model)
             if step_result:
+                print("step_result为真！")
                 return 1, model
 
     # 先看上面的if语句，如果if条件不满足，说明KKT条件已满足，找其它样本进行优化，否则执行下面语句，退出
@@ -340,30 +351,43 @@ def fit(model):
     # 重点：确定alpha2，也就是old alpha2或alpha2下标，old alpha2和old alpha1都是启发式选择。
     while numChanged > 0 or examineAll:
         numChanged = 0
-        if loopnum > 2000:
+        if loopnum == 2000:
             break
         loopnum += 1
 
         if examineAll:
             loopnum1 += 1  # 记录顺序，一个一个选择alpha 的循环次数
             # 从0,1,2,3,...,m顺序选择a2的，送给examine_example选择alpha1，总共m(m-1)种选法
-            for i in range(model.alphas.shape[0]):  # i 从0循环到999
-                # print("i:", i)
+            for i in range(model.alphas.shape[0]):  # i 从0循环到999, model.alphas.shape为(1000,)
                 examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0
                 numChanged += examine_result
+                if i == 999:
+                    print("i == 999, 退出！", "numChanged:", numChanged, "")
+                    # sys.exit()
+
         else:  # 上面if里m(m-1)执行完的后执行
             loopnum2 += 1
             # loop over examples where alphas are not already at their limits
+            print("loopnum2中alpha不为0,C的个数：",
+                  len(np.where((model.alphas != 0) & (model.alphas != model.C))[0]), ', 数组：',
+                  np.where((model.alphas != 0) & (model.alphas != model.C))[0])
+            # sys.exit()
             for i in np.where((model.alphas != 0) & (model.alphas != model.C))[0]:
                 examine_result, model = examine_example(i, model)
                 numChanged += examine_result
+
+            print("loopnum2:", loopnum2, ", numChanged:", numChanged, ', examineAll:', examineAll, ', loopnum:', loopnum)
+            if loopnum2 == 2:
+                sys.exit()
+                # continue
+            # sys.exit()
 
         if examineAll == 1:
             examineAll = 0
         elif numChanged == 0:
             examineALL = 1
 
-    print("loopNum:{0}, loopNum1:{1}, loopNum2:{2}".format(loopnum1, loopnum1, loopnum2))
+    print("loopNum:{0}, loopNum1:{1}, loopNum2:{2}".format(loopnum, loopnum1, loopnum2))
     return model
 
 
