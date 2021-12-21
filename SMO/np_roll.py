@@ -26,3 +26,8 @@ print("x3:\n", x3)
 
 x4 = np.roll(x, 1, axis=1)  # 2行同事向水平方向移动1个位置
 print("x4:\n", x4)
+
+x5 = np.array([0, 1, 441])
+print('测试x5:', np.roll(x5, 836))
+for i in np.roll(x5, 836):
+    print("i:", i)

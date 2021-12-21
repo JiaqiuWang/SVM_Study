@@ -167,9 +167,9 @@ def take_step(i1, i2, model):
         # y1, y2同号，使用Equation(J14)
         L = max(0, alpha1 + alpha2 - model.C)
         H = min(model.C, alpha1 + alpha2)
-    print("L:{0}, H:{1}".format(L, H))
     if L == H:
         return 0, model
+    print("L:{0}, H:{1}".format(L, H))
 
     # 根据公式J16计算et, et=2k12-k11-k22, 分别计算样本1,2的核函数组合，目的在于计算eta
     # 也就是求一姐导数后的值，目的在于求alpha2 new
@@ -243,9 +243,7 @@ def take_step(i1, i2, model):
 
     # 当所训练模型为线性核函数时，根据Equation J22计算w的值w_new=w_old+y1(a1_new-a1_old)x1+y2(a2_new-a2_old)x2
     if model.user_linear_optim:
-        print("old w:", model.w)
         model.w = model.w + y1 * (a1 - alpha1) * model.X[i1] + y2 * (a2 - alpha2) * model.X[i2]
-        print("new w:", model.w)
     # 在alphas矩阵中分别更新a1, a2的值
     # Update model object with new alphas & threshold
     model.alphas[i1] = a1
@@ -257,13 +255,10 @@ def take_step(i1, i2, model):
     # 更新差值 Equation 12 Ei_new=所有支持向量集合中每个样本j的误差=y_j*alpha_j*k_ij+b_new-y_i
     for k in range(model.m):  # 循环所有样本的数量
         if 0 < model.alphas[k] < model.C:
-            print("alpha[{0}]:{1}, error[{0}]:{2}".format(k, model.alphas[k], model.errors[k]))
             model.errors[k] += y1 * (a1 - alpha1) * model.kernel(model.X[i1], model.X[k]) + \
                                y2 * (a2 - alpha2) * model.kernel(model.X[i2], model.X[k]) + \
                                model.b - b_new
-            print('new error[{0}]:{1}'.format(k, model.errors[k]))
     # update model threshold，计算完model.b - b_new的值，在更新模型中的b值。
-    print("old b:", model.b, ', new b:', b_new)
     model.b = b_new
     print("更新完线性w值、alpha矩阵后返回new model.\n")
     return 1, model
@@ -312,8 +307,15 @@ def examine_example(i2, model):
                 print('i1为空！')
 
         # 循环所有非0、非C的alpha值进行优化，随机选择起点
-        for i1 in np.roll(np.where((model.alphas != 0) & (model.alphas != model.C))[0],
-                          np.random.choice(np.arange(model.m))):  # 从不为O与C的alpha数组中，随机选择一个i1，然后循环
+        array_notZeroC = np.where((model.alphas != 0) & (model.alphas != model.C))[0]
+        randomNumber = np.random.choice(np.arange(model.m))
+        rollArray = np.roll(array_notZeroC, randomNumber)
+        print('不为0与C的alpha数组：', array_notZeroC, '随机数：', randomNumber)
+        print('随机选择起点的alpha数组：', rollArray)
+
+        for i1 in rollArray:
+
+
             print("B-i1:{0}, i2:{1}".format(i1, i2))
             step_result, model = take_step(i1, i2, model)
             if step_result:
@@ -380,8 +382,8 @@ def fit(model):
                 numChanged += examine_result
 
             print("loopnum2:", loopnum2, ", numChanged:", numChanged, ', examineAll:', examineAll, ', loopnum:', loopnum)
-            # if loopnum2 == 2:
-            #     sys.exit()
+            if loopnum2 == 2:
+                sys.exit()
                 # continue
             # sys.exit()
 
@@ -439,10 +441,10 @@ def main():
     # 开始训练
     output = fit(model)
     # # 绘制训练完，找到分割平面的图
-    fig, ax = plt.subplots()
-    grid, ax = plot_decision_boundary(output, ax)
-    plt.show()
-    print("End!")
+    # fig, ax = plt.subplots()
+    # grid, ax = plot_decision_boundary(output, ax)
+    # plt.show()
+    # print("End!")
 
 
 if __name__ == "__main__":
