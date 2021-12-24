@@ -1,7 +1,7 @@
 """
-描述：支持向量机之SMO算法
+描述：支持向量机之SMO算法：按照标准版的算法进行修改
 作者：王佳秋
-日期：2021年10月19日
+日期：2021年12月24日
 """
 import sys
 
@@ -15,12 +15,12 @@ from sklearn.preprocessing import StandardScaler
 
 class SMOStruct:
     """按照John.platt的论文构造SMO的数据结构"""
-    def __init__(self, X, y, C, kernel, alpha, b, errors, user_linear_optim, tol, eps):
+    def __init__(self, X, y, C, kernel, alphas, b, errors, user_linear_optim):
         self.X = X  # 训练样本
         self.y = y  # 类别：label
         self.C = C  # regularization parameter 正则化常量，用于调整（过）拟合的程度
         self.kernel = kernel  # kernel function 核函数，实现了两个核函数：线性与高斯(RBF)核函数
-        self.alphas = alpha  # lagrange multiplier拉格朗日乘子，与样本一一相对
+        self.alphas = alphas  # lagrange multiplier拉格朗日乘子，与样本一一相对
         self.b = b  # scalar bias term 标量，偏移量
         self.errors = errors  # error cache 输出值误差：差值矩阵，用于存储判别函数实际值与预测值的差值，与样本一一相对
         # 存储的目的为递归、优化使得样本能够快速迭代，找到alpha值
@@ -28,8 +28,6 @@ class SMOStruct:
         # number of features(n) for each example训练 样本的个数和每个样本的features数量
         self.user_linear_optim = user_linear_optim  # Boolean值，判断模型是否使用线性核函数
         self.w = np.zeros(self.n)  # 初始化权重w的值，用于线性核函数
-        self.tol = tol  # 函数值的容差预测值-真实值
-        self.eps = eps  # alpha tolerance 参数alpha误差值=alpha_new - alpha_old
 
 
 def plot_decision_boundary(model, ax, resolution=100, colors=('b', 'k', 'r'), levels=(-1, 0, 1)):
@@ -112,7 +110,7 @@ def decision_function(alphas, target, kernel, X_train, x_test, b):
     """判别函数2：用于多个样本，主要用于绘图
     Applies the SVM decision function to the input feature vectors in 'x_test'. """
     result = (alphas * target)
-    print("多样本决策函数中的kernel:", kernel)
+    # print("多样本决策函数中的kernel:", kernel)
     # result = kernel(X_train, x_test)
     # print("result:", result)
     result = (alphas * target) @ kernel(X_train, x_test) - b  # * . @ 两个Operators的区别
@@ -184,16 +182,15 @@ def take_step(i1, i2, model):
     # 第一种情况：eta值大于0
     if eta > 0:
         # equation J16 计算alpha2 new
-
-        a2_new = alpha2 + y2 * (E1 - E2) / eta
+        a2 = alpha2 + y2 * (E1 - E2) / eta
         # clip a2 based on bounds L & H，把a2夹到限定区间 equation J17
-        if L < a2_new < H:
-            a2 = a2_new
-        elif a2_new <= L:
+        if L < a2 < H:
+            a2 = a2
+        elif a2 <= L:
             a2 = L
-        elif a2_new >= H:
+        elif a2 >= H:
             a2 = H
-        print('old alpha2:', alpha2, ', new alpha2:', a2_new, ', 夹new alpha2到L,H限定区间：', a2)
+        # print('old alpha2:', alpha2, ', new alpha2:', a2, ', 夹new alpha2到L,H限定区间：', a2)
     else:  # 如果eta值为负数或0，即<=0时，move new a2 to bound with greater objective function value
         # Equation J19，在特殊情况下，eta可能不为正not positive
         f1 = y1 * (E1 + model.b) - alpha1 * k11 - s * alpha2 * k12
@@ -202,9 +199,9 @@ def take_step(i1, i2, model):
         H1 = alpha1 + s * (alpha2 - H)
         Lobj = L1 * f1 + L * f2 + 0.5 * (L1**2) * k11 + 0.5 * (L**2) * k22 + s * L * L1 * k12
         Hobj = H1 * f1 + H * f2 + 0.5 * (H1**2) * k11 + 0.5 * (H**2) * k22 + s * H * H1 * k12
-        if Lobj < Hobj - model.eps:
+        if Lobj < Hobj - eps:
             a2 = L
-        elif Lobj > Hobj + model.eps:
+        elif Lobj > Hobj + eps:
             a2 = H
         else:
             a2 = alpha2
@@ -217,7 +214,7 @@ def take_step(i1, i2, model):
         a2 = model.C
     # 超过容差仍不能优化时，跳过
     # if examples can't be optimized within epsilon(eps), skip this pair
-    if (np.abs(a2 - alpha2)) < (model.eps * (a2 + alpha2 + model.eps)):
+    if np.abs(a2 - alpha2) < eps * (a2 + alpha2 + eps):
         print("Within epsilon, skip this pair.")
         return 0, model
 
@@ -232,15 +229,16 @@ def take_step(i1, i2, model):
     b2 = E2 + y1 * (a1 - alpha1) * k12 + y2 * (a2 - alpha2) * k22 + model.b
     print('b1:', b1, ', b2:', b2)
     # Set new threshold based on if a1 or a2 is bound by L and/or H
-    if 0 < a1 < model.C:
+    if 0 < a1 < C:
         b_new = b1
-    elif 0 < a2 < model.C:
+    elif 0 < a2 < C:
         b_new = b2
     else:  # Average thresholds if both are bound
         b_new = (b1 + b2) * 0.5
-    print('b_new:', b_new)
-    # 原本在这里在更新模型中的b值，又由于更新误差的时候要计算新旧b值差，所以放到后面再更新
+    # print('b_new:', b_new)
     model.b = b_new
+    # 原本在这里在更新模型中的b值，又由于更新误差的时候要计算新旧b值差，所以放到后面再更新
+
 
     # 当所训练模型为线性核函数时，根据Equation J22计算w的值w_new=w_old+y1(a1_new-a1_old)x1+y2(a2_new-a2_old)x2
     if model.user_linear_optim:
@@ -258,13 +256,13 @@ def take_step(i1, i2, model):
     # 更新差值 Equation 12 Ei_new=所有支持向量集合中每个样本j的误差=y_j*alpha_j*k_ij+b_new-y_i
     for k in range(model.m):  # 循环所有样本的数量
         if 0 < model.alphas[k] < model.C:
+            print("old b:", model.b, ', new b:', b_new)
             print("alpha[{0}]:{1}, error[{0}]:{2}".format(k, model.alphas[k], model.errors[k]))
             model.errors[k] += y1 * (a1 - alpha1) * model.kernel(model.X[i1], model.X[k]) + \
                                y2 * (a2 - alpha2) * model.kernel(model.X[i2], model.X[k]) + \
                                model.b - b_new
             print('new error[{0}]:{1}'.format(k, model.errors[k]))
     # update model threshold，计算完model.b - b_new的值，在更新模型中的b值。
-    print("old b:", model.b, ', new b:', b_new)
 
     print("更新完线性w值、alpha矩阵后返回new model.\n")
     return 1, model
@@ -287,12 +285,12 @@ def examine_example(i2, model):
     # 如果满足第一个if语句说明不满足KTT约束条件，需要优化样本
     # 条件意思：在容差之内或alpha2需要优化的话，就开始优化。不需要优化满足KTT条件退出优化。
     print("alpha2的下标i2:", i2, ', alpha2:', alpha2, ', y2:', y2, ", E2:", E2)
-    if (r2 < -model.tol and alpha2 < model.C) or (r2 > model.tol and alpha2 > 0):  # 违反KTT条件
+    if (r2 < -tol and alpha2 < model.C) or (r2 > tol and alpha2 > 0):  # 违反KTT条件
         print('该i2:{}违反KTT条件，需要被优化'.format(i2))
         # 由于第一次的alpha矩阵都为0，所以没有不为0与C的alpha值，第一个if优化不被执行
         if len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]) > 1:
-            print("不为0与C的alpha个数为：", len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]),
-                  ", 不为0与C的alpha数组下标：", np.where(model.alphas[(model.alphas != 0) & (model.alphas != model.C)])[0])
+            # print("不为0与C的alpha个数为：", len(model.alphas[(model.alphas != 0) & (model.alphas != model.C)]),
+            #       ", 不为0与C的alpha数组下标：", np.where(model.alphas[(model.alphas != 0) & (model.alphas != model.C)])[0])
             # 先找那些不在0，C的点。选择Ei矩阵中差值做大的先进行优化
             # 要想|E2-E1|最大，只需在E2为正，选择最小的Ei作为E1
             # 在E2为负数时，选择最大的Ei作为E1
@@ -303,7 +301,6 @@ def examine_example(i2, model):
             elif model.errors[i2] <= 0:
                 i1 = np.argmax(model.errors)
 
-            print("A-i1:", i1, ", i2:", i2)
             step_result, model = take_step(i1, i2, model)
             if step_result:
                 print("step_result为真！")
@@ -364,27 +361,17 @@ def fit(model):
             for i in range(model.alphas.shape[0]):  # i 从0循环到999, model.alphas.shape为(1000,)
                 examine_result, model = examine_example(i, model)  # 优化成功返回的examine_result为1，否则为0
                 numChanged += examine_result
-                # if i == 999:
-                #     print("i == 999, 退出！", "numChanged:", numChanged, "")
-                    # sys.exit()
 
         else:  # 上面if里m(m-1)执行完的后执行
             loopnum2 += 1
             # loop over examples where alphas are not already at their limits
-            print("loopnum2中alpha不为0,C的个数：",
-                  len(np.where((model.alphas != 0) & (model.alphas != model.C))[0]), ', 数组：',
-                  np.where((model.alphas != 0) & (model.alphas != model.C))[0])
+            # print("loopnum2中alpha不为0,C的个数：",
+            #       len(np.where((model.alphas != 0) & (model.alphas != model.C))[0]), ', 数组：',
+            #       np.where((model.alphas != 0) & (model.alphas != model.C))[0])
             # sys.exit()
             for i in np.where((model.alphas != 0) & (model.alphas != model.C))[0]:
                 examine_result, model = examine_example(i, model)
                 numChanged += examine_result
-
-            print("loopnum2:", loopnum2, ", numChanged:", numChanged, ', examineAll:', examineAll, ', loopnum:', loopnum)
-            # if loopnum2 == 2:
-            #     sys.exit()
-                # continue
-            # sys.exit()
-
         if examineAll == 1:
             examineAll = 0
         elif numChanged == 0:
@@ -394,56 +381,55 @@ def fit(model):
     return model
 
 
-def main():
-    # make_blob需要解释一下
-    print("1 Python Main Function")
-    print(" 1.1生产训练样本X[x1, x2, ...xn]; Y=[y1, y2, ..., yn], yi=+-1")
-    # 1.1生产训练样本X[x1, x2, ...xn]; Y=[y1, y2, ..., yn], yi=+-1"
-    X_train, y = make_blobs(n_samples=1000, centers=2, n_features=2, random_state=2)
-    print(" 1.2数据预处理：数据预处理，使得经过处理的数据X符合正态分布，即均值为0，标准差为1，Y为-1或1")
-    # 1.2数据预处理：数据预处理，使得经过处理的数据X符合正态分布，即均值为0，标准差为1，Y为-1或1
-    scaler = StandardScaler()  # StandardScaler()以及fit_transform()函数的作用需要解释一下
-    # 训练样本异常大或异常小会影响样本的正确训练，如果数据的分部很分散也会影响
-    X_train_scaled = scaler.fit_transform(X_train, y)
-    y[y == 0] = -1
 
-    # 2.设置模型参数与对应的初始值：set model parameter and initial values
-    print('2 设置模型参数与对应的初始值')
-    C = 20.0  # 正则化超参，目标函数的约束   s.t. 0<=alpha<=C
-    m = len(X_train_scaled)  # 训练样本的数量
-    initial_alphas = np.zeros(m)  # 模型参数，每个样本对应一个alpha值，大多数样本的alpha值为0
-    # print("initial_alphas:", initial_alphas, ", shape:", initial_alphas.shape, ", type:", type(initial_alphas))
-    # 只有在support hyperplane之间的为C，之外的为0，在线之上为0<alpha<C
-    initial_b = 0.0  # 截距
+# make_blob需要解释一下
+print("1 Python Main Function")
+print(" 1.1生产训练样本X[x1, x2, ...xn]; Y=[y1, y2, ..., yn], yi=+-1")
+# 1.1生产训练样本X[x1, x2, ...xn]; Y=[y1, y2, ..., yn], yi=+-1"
+X_train, y = make_blobs(n_samples=1000, centers=2, n_features=2, random_state=2)
+print(" 1.2数据预处理：数据预处理，使得经过处理的数据X符合正态分布，即均值为0，标准差为1，Y为-1或1")
+# 1.2数据预处理：数据预处理，使得经过处理的数据X符合正态分布，即均值为0，标准差为1，Y为-1或1
+scaler = StandardScaler()  # StandardScaler()以及fit_transform()函数的作用需要解释一下
+# 训练样本异常大或异常小会影响样本的正确训练，如果数据的分部很分散也会影响
+X_train_scaled = scaler.fit_transform(X_train, y)
+y[y == 0] = -1
 
-    # set tolerances  容差
-    tol = 0.01  # error tolerance 差值EI的容差。输出误差值=f(xi)-yi的值
-    eps = 0.01  # alpha tolerance 参数alpha误差值=alpha_new - alpha_old
-    # print(" 1.1 Set model parameters and initial values...")
+# 2.设置模型参数与对应的初始值：set model parameter and initial values
+print('2 设置模型参数与对应的初始值')
+C = 20.0  # 正则化超参，目标函数的约束   s.t. 0<=alpha<=C
+m = len(X_train_scaled)  # 训练样本的数量
+initial_alphas = np.zeros(m)  # 模型参数，每个样本对应一个alpha值，大多数样本的alpha值为0
+# print("initial_alphas:", initial_alphas, ", shape:", initial_alphas.shape, ", type:", type(initial_alphas))
+# 只有在support hyperplane之间的为C，之外的为0，在线之上为0<alpha<C
+initial_b = 0.0  # 截距
 
-    # Instantiate model
-    print('3 实例化数据模型与参数初始值。')
-    model = SMOStruct(X=X_train_scaled, y=y, C=C, kernel=linear_kernel,
-                      alpha=initial_alphas, b=initial_b, errors=np.zeros(m),
-                      user_linear_optim=True, tol=tol, eps=eps)
-    print("4 计算所有样本的误差值=决策函数-真实值. ", model)
-    # Instantiate 差值矩阵
-    initial_error = decision_function(alphas=model.alphas, target=model.y, kernel=model.kernel,
-                                      X_train=model.X, x_test=model.X, b=model.b) - model.y
-    model.errors = initial_error
-    # print(" 1.3 Set model parameters and initial values...")
-    # print("Initial model.errors:\n", model.errors)
-    np.random.seed(0)
+# set tolerances  容差
+tol = 0.01  # error tolerance 差值EI的容差。输出误差值=f(xi)-yi的值
+eps = 0.01  # alpha tolerance 参数alpha误差值=alpha_new - alpha_old
+# print(" 1.1 Set model parameters and initial values...")
 
-    print("5 开始训练... / Starting to fit...")
-    # 开始训练
-    output = fit(model)
-    # # 绘制训练完，找到分割平面的图
-    fig, ax = plt.subplots()
-    grid, ax = plot_decision_boundary(output, ax)
-    plt.show()
-    print("End!")
+# Instantiate model
+print('3 实例化数据模型与参数初始值。')
+model = SMOStruct(X=X_train_scaled, y=y, C=C, kernel=linear_kernel,
+                  alphas=initial_alphas, b=initial_b, errors=np.zeros(m),
+                  user_linear_optim=True)
+print("4 计算所有样本的误差值=决策函数-真实值. ", model)
+# Instantiate 差值矩阵
+initial_error = decision_function(alphas=model.alphas, target=model.y, kernel=model.kernel,
+                                  X_train=model.X, x_test=model.X, b=model.b) - model.y
+model.errors = initial_error
+# print(" 1.3 Set model parameters and initial values...")
+# print("Initial model.errors:\n", model.errors)
+np.random.seed(0)
+
+print("5 开始训练... / Starting to fit...")
+# 开始训练
+output = fit(model)
+# 绘制训练完，找到分割平面的图
+fig, ax = plt.subplots()
+grid, ax = plot_decision_boundary(output, ax)
+plt.show()
+print("End!")
 
 
-if __name__ == "__main__":
-    main()
+
